@@ -3,8 +3,8 @@
  * Plugin Name: EB Course Addon 
  * Description: Shortcode to display enrolled courses using user_id. Usage: [show_eb_course user_id="123"] [enrollment_eb_course user_id="123"] [court_date_past court_date="2023-10-01"] [show_eb_course_order user_id="123"]
  * Version: 1.0
- * Author: Nimesh Gorfad
- * Author URI: https://github.com/nimeshgorfad/
+ * Author: 
+ * Author URI: 
  */
 
 defined( 'ABSPATH' ) || exit;
@@ -53,11 +53,15 @@ function sec_show_eb_course_shortcode( $atts ) {
             continue; // Skip if course not found or not of type eb_course
         }
 
-        $output .= ' <b> Cours : </b>' . esc_html( $course_post->post_title ) . '</br>';  
+         
 
        //Enrolled Date
-       // $enrolled_date = isset( $course->time ) ? date( 'F j, Y', strtotime( $course->time ) ) : 'N/A';
-        $output .= ' <b> Enrolled Date : </b>' . esc_html( $course->time ) . '';
+        $output .= "<b>  Enrolled Date : </b>";
+        $output .= isset( $course->time ) ? date( 'F j, Y', strtotime( $course->time ) ) : 'N/A';
+        $output .= "<br>";
+
+        $output .= ' <b> Course : </b>' . esc_html( $course_post->post_title ) . ' ';
+        //$output .= ' <b> Enrolled Date : </b>' . esc_html( $course->time ) . '';
   
     }
     
@@ -71,7 +75,7 @@ add_shortcode( 'show_eb_course', 'sec_show_eb_course_shortcode' );
 
 add_action( 'wp_enqueue_scripts', 'sec_enroll_course_ajax_script' );
 function sec_enroll_course_ajax_script() {
-    wp_enqueue_script( 'enrollment-ajax', plugin_dir_url( __FILE__ ) . 'js/enrollment.js', array( 'jquery' ), '1.3', true );
+    wp_enqueue_script( 'enrollment-ajax', plugin_dir_url( __FILE__ ) . 'js/enrollment.js', array( 'jquery' ), '1.5', true );
 
     $admin_nonce   = wp_create_nonce( 'eb_admin_nonce' );
 
@@ -120,7 +124,7 @@ function sec_enrollment_eb_course_shortcode( $atts ) {
 
     if ( empty( $results ) ) {
         ?>
-        <form method="post" action="">
+        <form class="nkg_enrollment_form" method="post" action="">
             <?php wp_nonce_field( 'eb-manage-user-enrol', 'eb-manage-user-enrol' ); ?>
 
             <input type="hidden" name="new-enrollment-student" id="new-enrollment-student" value="<?php echo esc_attr( $user_id ); ?>" />
@@ -158,9 +162,10 @@ function sec_enrollment_eb_course_shortcode( $atts ) {
 
 add_shortcode( 'enrollment_eb_course', 'sec_enrollment_eb_course_shortcode' );
 
+add_action("wp_ajax_nopriv_enroll_user_to_courses", "sec_handle_enroll_user_ajax");
 
 add_action( 'wp_ajax_enroll_user_to_courses', 'sec_handle_enroll_user_ajax' );
-
+ 
 function sec_handle_enroll_user_ajax() {
     
 	
@@ -282,7 +287,7 @@ function shortcode_show_eb_course_order($atts) {
             $formatted_variation  = wc_get_formatted_variation( $product, true );
              $product_name = $formatted_variation;
            
-            echo ' <b>' . esc_html($product_name) . '</b> <br> fee - ' . $product_price . '';
+            echo ' <b>' . esc_html($product_name) . ' <br> fee -</b> ' . $product_price . '';
 
 
           }else{
@@ -296,3 +301,161 @@ function shortcode_show_eb_course_order($atts) {
 }
 add_shortcode('show_eb_course_order', 'shortcode_show_eb_course_order');
 
+function shortcode_show_eb_course_order_name($atts){
+
+    $atts = shortcode_atts(array(
+        'user_id' => 0,
+    ), $atts);
+
+    $user_id = intval($atts['user_id']);
+
+    if (!$user_id || get_userdata($user_id) === false) {
+        return 'Invalid user ID.';
+    }
+
+   
+
+    $args = array(
+        'customer' => $user_id,
+        'limit' => 1, // Retrieve all orders for the user
+        'orderby' => 'date',
+        'order' => 'DESC',
+    );
+
+        $orders = wc_get_orders( $args );
+
+ 
+
+    if (empty($orders)) {
+        return '';
+    }
+
+    $order = wc_get_order($orders[0]->ID);
+    
+
+    ob_start();
+
+    foreach ($order->get_items() as $item) {
+        $product_name = $item->get_name();
+        $product_price = wc_price($item->get_total());
+          if ( $item->get_variation_id() ) {
+            $product = $item->get_product();
+
+            $variation_attributes = $product->get_attributes();
+            $formatted_variation  = wc_get_formatted_variation( $product, true );
+             $product_name = $formatted_variation;
+           
+            echo ' <b>' . esc_html($product_name) . '</b>';
+
+
+          }else{
+            echo '<p><strong>' . esc_html($product_name) . '</strong> </p>';
+          }
+        
+    }
+
+  
+    return ob_get_clean();
+
+
+}
+add_shortcode('show_eb_course_order_name', 'shortcode_show_eb_course_order_name');
+
+function shortcode_show_eb_course_order_price($atts){
+
+    $atts = shortcode_atts(array(
+        'user_id' => 0,
+    ), $atts);
+
+    $user_id = intval($atts['user_id']);
+
+    if (!$user_id || get_userdata($user_id) === false) {
+        return 'Invalid user ID.';
+    }
+
+   
+
+    $args = array(
+        'customer' => $user_id,
+        'limit' => 1, // Retrieve all orders for the user
+        'orderby' => 'date',
+        'order' => 'DESC',
+    );
+
+    $orders = wc_get_orders( $args );
+
+ 
+
+    if (empty($orders)) {
+        return '';
+    }
+
+    $order = wc_get_order($orders[0]->ID);
+    
+
+    ob_start();
+
+    foreach ($order->get_items() as $item) {
+        $product_name = $item->get_name();
+        $product_price = wc_price($item->get_total());
+          if ( $item->get_variation_id() ) {
+            $product = $item->get_product();
+
+            $variation_attributes = $product->get_attributes();
+            $formatted_variation  = wc_get_formatted_variation( $product, true );
+             $product_name = $formatted_variation;
+           
+            echo 'fee - ' . $product_price . '';
+
+
+          }else{
+            echo '<p>' . $product_price . '</p>';
+          }
+        
+    }
+
+  
+    return ob_get_clean();
+
+
+}
+add_shortcode('show_eb_course_order_price', 'shortcode_show_eb_course_order_price');
+
+/*   shortcode for moodle course id
+ */
+
+function shortcode_show_moodle_course_id($atts) {
+    global $wpdb;
+
+    $atts = shortcode_atts(array(
+        'user_id' => 0,
+    ), $atts);
+
+    $user_id = intval($atts['user_id']);
+
+    if (!$user_id || get_userdata($user_id) === false) {
+        return 'Invalid user ID.';
+    }
+
+    $results = $wpdb->get_col(
+        $wpdb->prepare(
+            "SELECT course_id FROM {$wpdb->prefix}moodle_enrollment WHERE user_id = %d",
+            $user_id
+        )
+    );
+
+    if (empty($results)) {
+        return '';
+    }
+    $moodle_course_id = get_post_meta($results[0], 'moodle_course_id', true);
+
+    //$moodle_course_id = Eb_Post_Types::get_post_options( $results, 'moodle_course_id', 'eb_course' );
+        
+    return "<b>Moodle Course Id :</b> ".$moodle_course_id;
+
+    //return implode(', ', $results);
+}
+add_shortcode('show_moodle_course_id', 'shortcode_show_moodle_course_id');
+
+include('update-court-addon.php');
+include('eb-court-admin.php');
